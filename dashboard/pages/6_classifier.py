@@ -17,8 +17,9 @@ def load_sentiment_model():
 @st.cache_resource
 def load_misinfo_model():
     from transformers import pipeline
+    # Use smaller model for cloud deployment; swap to facebook/bart-large-mnli locally for higher accuracy
     return pipeline("zero-shot-classification",
-                    model="facebook/bart-large-mnli")
+                    model="typeform/distilbart-mnli-12-1")
 
 
 comment = st.text_area("Enter a comment:", height=120,
@@ -68,4 +69,4 @@ elif not comment.strip() and st.session_state.get("classify_clicked"):
 
 st.markdown("---")
 st.caption("Models: `twitter-xlm-roberta-base-sentiment-multilingual` (sentiment), "
-           "`bart-large-mnli` (zero-shot classification)")
+           "`distilbart-mnli-12-1` (zero-shot classification)")

@@ -223,3 +223,6 @@ __marimo__/
 
 data/*.csv
 data/*.json
+
+# Raw collected data (too large for git)
+collected_data/
