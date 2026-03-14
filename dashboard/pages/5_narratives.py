@@ -25,7 +25,7 @@ if not SENTIMENT_FILE.exists() and not TOPICS_FILE.exists():
 if SENTIMENT_FILE.exists():
     st.subheader("Sentiment Over Time")
     sent = pd.read_csv(SENTIMENT_FILE)
-    sent["date"] = pd.to_datetime(sent["date"])
+    sent["date"] = pd.to_datetime(sent["date"], utc=True)
 
     fig = go.Figure()
     for col in ["positive", "negative", "neutral"]:
@@ -46,17 +46,29 @@ if TOPICS_FILE.exists():
     topics = pd.read_csv(TOPICS_FILE)
 
     if "Timestamp" in topics.columns and "Topic" in topics.columns:
-        topics["Timestamp"] = pd.to_datetime(topics["Timestamp"])
-        topic_list = sorted(topics["Topic"].unique())
-        selected_topics = st.multiselect("Select topics to display",
-                                          topic_list, default=topic_list[:5])
+        topics["Timestamp"] = pd.to_datetime(topics["Timestamp"], format="ISO8601")
+        # Create a display label from Topic ID + top words
+        if "Words" in topics.columns:
+            label_map = topics.drop_duplicates("Topic").set_index("Topic")["Words"].to_dict()
+            topics["TopicLabel"] = topics["Topic"].map(
+                lambda t: f"Topic {t}: {label_map.get(t, '')[:40]}" if t != -1 else "Outliers"
+            )
+        else:
+            topics["TopicLabel"] = topics["Topic"].astype(str)
 
-        filtered = topics[topics["Topic"].isin(selected_topics)]
-        fig2 = px.line(filtered, x="Timestamp", y="Frequency",
-                       color="Name" if "Name" in filtered.columns else "Topic",
-                       title="Topic Frequency Over Time")
-        fig2 = add_event_annotations(fig2)
-        st.plotly_chart(fig2, use_container_width=True)
+        # Exclude outlier topic (-1)
+        topics_clean = topics[topics["Topic"] != -1]
+        topic_labels = sorted(topics_clean["TopicLabel"].unique())
+        selected = st.multiselect("Select topics to display",
+                                   topic_labels, default=topic_labels[:5])
+
+        filtered = topics_clean[topics_clean["TopicLabel"].isin(selected)]
+        if not filtered.empty:
+            fig2 = px.line(filtered, x="Timestamp", y="Frequency",
+                           color="TopicLabel",
+                           title="Topic Frequency Over Time")
+            fig2 = add_event_annotations(fig2)
+            st.plotly_chart(fig2, use_container_width=True)
 
 # ── Misinformation Distribution ─────────────────────────────────────────────
 if CLASSIFICATIONS_FILE.exists():
